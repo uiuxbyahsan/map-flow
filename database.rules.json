@@ -1,0 +1,30 @@
+{
+  "rules": {
+    "officers": {
+      ".read": true,
+      "$officerId": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['lat', 'lng', 'updatedAt'])",
+        "lat": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+        "lng": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+        "updatedAt": { ".validate": "newData.isNumber() && newData.val() <= now + 60000" },
+        "$other": { ".validate": false }
+      }
+    },
+    "pins": {
+      ".read": true,
+      "$pinId": {
+        ".write": true,
+        ".validate": "newData.hasChildren(['type', 'label', 'lat', 'lng', 'createdAt'])",
+        "type": { ".validate": "newData.val() === 'incident' || newData.val() === 'checkpoint' || newData.val() === 'patrol' || newData.val() === 'other'" },
+        "label": { ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 80" },
+        "note": { ".validate": "newData.isString() && newData.val().length <= 500" },
+        "lat": { ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90" },
+        "lng": { ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180" },
+        "createdAt": { ".validate": "newData.isNumber()" },
+        "updatedAt": { ".validate": "newData.isNumber()" },
+        "$other": { ".validate": false }
+      }
+    }
+  }
+}
