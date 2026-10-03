@@ -23,6 +23,9 @@ export const SHAPE_FILL_OPACITY = 0.22;
 const ADMIN_SLUG_HASH = (import.meta.env.VITE_ADMIN_SLUG_HASH || '').trim().toLowerCase();
 
 export async function isAdminPath(path) {
+  // Plain /admin opens the admin view, at the client's request. It is guessable, so it gives no
+  // protection: anyone who types it gets full pin controls.
+  if (path === '/admin') return true;
   const m = /^\/admin-([A-Za-z0-9_-]{16,})$/.exec(path);
   if (!m || !/^[0-9a-f]{64}$/.test(ADMIN_SLUG_HASH) || !crypto.subtle) return false;
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(m[1]));
