@@ -41,7 +41,7 @@ function pinIcon(type) {
 function officerHtml(o, now, mine) {
   const stale = now - o.updatedAt > STALE_AFTER_MS;
   return `<div class="pop">
-    <div class="pop-title"><span class="badge ${stale ? 'b-stale' : 'b-live'}">${stale ? 'Stale' : 'Live'}</span> Officer${mine ? ' (you)' : ''}</div>
+    <div class="pop-title"><span class="badge ${stale ? 'b-stale' : 'b-live'}">${stale ? 'Stale' : 'Live'}</span> Anonymous${mine ? ' (you)' : ''}</div>
     <div class="pop-meta">Last update: ${ago(o.updatedAt, now)}<br>${fmtTime(o.updatedAt)}</div>
   </div>`;
 }

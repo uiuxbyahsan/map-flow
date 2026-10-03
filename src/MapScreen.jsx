@@ -105,24 +105,18 @@ export default function MapScreen({ isAdmin }) {
       ) : (
         <div className="controls">
           {sharing.error && <div className="error">{sharing.error}</div>}
-          <div className="control-row">
-            <button
-              className={`share-btn ${sharing.active ? 'on' : ''}`}
-              onClick={sharing.active ? sharing.stop : sharing.start}
-            >
-              {sharing.active ? 'Stop Map' : 'Start Map'}
-            </button>
-            {sharing.active && sharing.myPos && (
-              <button className="center-btn" onClick={() => setFocus({ ...sharing.myPos })} aria-label="Centre on me">
-                ◎
+          {sharing.myPos && (
+            <div className="control-row">
+              <button className="center-btn wide" onClick={() => setFocus({ ...sharing.myPos })}>
+                ◎ Centre on me
               </button>
-            )}
-          </div>
+            </div>
+          )}
           <div className="disclosure">
-            {sharing.active ? (
+            {sharing.myPos ? (
               <><i className="pulse" /> Your live location is being shared on this map</>
-            ) : (
-              'Start Map shares your live location on this map until you tap Stop Map'
+            ) : sharing.error ? null : (
+              'Starting location sharing…'
             )}
           </div>
         </div>
@@ -142,8 +136,8 @@ function Legend() {
       </button>
       {open && (
         <ul>
-          <li><i className="dot live" /> Officer (live)</li>
-          <li><i className="dot stale" /> Officer (no update 5+ min)</li>
+          <li><i className="dot live" /> Anonymous (live)</li>
+          <li><i className="dot stale" /> Anonymous (no update 5+ min)</li>
           {Object.entries(PIN_TYPES).map(([k, t]) => (
             <li key={k}><i className="dot" style={{ background: t.color }} /> {t.label}</li>
           ))}

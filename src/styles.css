@@ -90,6 +90,7 @@ body { background: var(--bg); -webkit-tap-highlight-color: transparent; }
   width: 58px; min-height: 58px; border: 1px solid var(--line); border-radius: 14px; background: #fff;
   font-size: 26px; box-shadow: 0 3px 10px rgba(0,0,0,.15); cursor: pointer;
 }
+.center-btn.wide { width: 100%; max-width: 420px; font-size: 17px; font-weight: 700; color: var(--navy); }
 .disclosure { font-size: 12px; color: var(--muted); text-align: center; display: flex; align-items: center; gap: 6px; }
 .pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); animation: pulse 1.4s infinite; flex: none; }
 @keyframes pulse { 50% { opacity: .25; } }
