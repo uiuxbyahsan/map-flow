@@ -66,7 +66,7 @@ export default function MapScreen({ isAdmin }) {
     <div className={`screen ${isAdmin ? 'admin' : 'officer'}`}>
       <header className="topbar">
         <div className="brand">
-          Mirpurkhas Map{isAdmin && <span className="admin-tag">Admin</span>}
+          Map{isAdmin && <span className="admin-tag">Admin</span>}
         </div>
         {isAdmin && (
           <div className="stats">
