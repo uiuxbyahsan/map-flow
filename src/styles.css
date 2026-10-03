@@ -16,6 +16,7 @@ html, body, #root { margin: 0; height: 100%; }
 body { background: var(--bg); -webkit-tap-highlight-color: transparent; }
 
 .screen { position: relative; height: 100dvh; display: flex; flex-direction: column; }
+.map-wrap { position: relative; flex: 1; min-height: 0; display: flex; }
 .map { flex: 1; min-height: 0; z-index: 0; }
 
 /* Top bar */
@@ -103,7 +104,7 @@ body { background: var(--bg); -webkit-tap-highlight-color: transparent; }
 }
 
 /* Legend */
-.legend { position: absolute; top: 64px; right: 10px; z-index: 1000; background: #fff; border-radius: 8px; box-shadow: 0 1px 5px rgba(0,0,0,.3); font-size: 12px; }
+.legend { position: absolute; top: 10px; right: 10px; z-index: 1000; background: #fff; border-radius: 8px; box-shadow: 0 1px 5px rgba(0,0,0,.3); font-size: 12px; }
 .legend-toggle { border: 0; background: none; padding: 8px 10px; font-weight: 700; cursor: pointer; float: right; }
 .legend ul { list-style: none; margin: 0; padding: 8px 12px 10px; clear: both; }
 .legend li { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
@@ -128,3 +129,26 @@ body { background: var(--bg); -webkit-tap-highlight-color: transparent; }
 
 .notice { max-width: 480px; margin: 15vh auto; padding: 0 16px; text-align: center; }
 .notice code { background: #f0f2f4; padding: 1px 4px; border-radius: 4px; }
+
+.area-key { display: inline-block; width: 16px; height: 12px; border: 2px solid #c2185b; background: rgba(194,24,91,.22); border-radius: 2px; }
+
+/* Admin place search (Nominatim) */
+.search { position: relative; z-index: 1500; padding: 8px 12px; background: var(--navy); }
+.search input {
+  width: 100%; font: inherit; font-size: 16px; padding: 10px 12px; border: 0; border-radius: 8px; background: #fff;
+}
+.search-results {
+  position: absolute; left: 12px; right: 12px; top: calc(100% - 4px); margin: 0; padding: 4px 0; list-style: none;
+  background: #fff; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.25); max-height: 50vh; overflow-y: auto;
+}
+.search-results button {
+  display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; padding: 8px 12px;
+  border: 0; background: none; font: inherit; cursor: pointer;
+}
+.search-results button:hover, .search-results button:focus { background: #f0f4f8; }
+.search-results strong { font-size: 14px; }
+.search-results span { font-size: 12px; color: var(--muted); }
+.search-msg { padding: 8px 12px; font-size: 13px; color: var(--muted); }
+
+/* Leaflet.draw: readable action buttons (Finish / Cancel / Save) */
+.leaflet-draw-actions a { font-size: 13px; }

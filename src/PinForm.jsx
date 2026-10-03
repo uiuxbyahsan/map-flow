@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { push, ref, remove, serverTimestamp, set, update } from 'firebase/database';
 import { db } from './firebase.js';
 import { PIN_TYPES } from './config.js';
+import { centerOf, describeShape } from './shapes.js';
+
+const SHAPE_TITLES = { point: 'pin', polygon: 'area', rectangle: 'area', circle: 'area' };
 
 export default function PinForm({ initial, onClose }) {
   const [type, setType] = useState(initial.type);
@@ -10,6 +13,9 @@ export default function PinForm({ initial, onClose }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const editing = Boolean(initial.id);
+  // Geometry: the stored record when editing, the freshly placed/drawn shape when creating.
+  const shape = editing ? initial.pin : { shapeType: initial.shapeType, ...initial.geometry };
+  const center = centerOf(shape);
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
@@ -36,12 +42,17 @@ export default function PinForm({ initial, onClose }) {
     run(() =>
       editing
         ? update(ref(db, `pins/${initial.id}`), { ...fields, updatedAt: serverTimestamp() })
-        : set(push(ref(db, 'pins')), { ...fields, lat: initial.lat, lng: initial.lng, createdAt: serverTimestamp() }),
+        : set(push(ref(db, 'pins')), {
+            ...fields,
+            shapeType: initial.shapeType,
+            ...initial.geometry,
+            createdAt: serverTimestamp(),
+          }),
     );
   };
 
   const del = () => {
-    if (window.confirm(`Delete pin "${initial.label}"? Everyone will see it disappear.`)) {
+    if (window.confirm(`Delete "${initial.label}"? Everyone will see it disappear.`)) {
       run(() => remove(ref(db, `pins/${initial.id}`)));
     }
   };
@@ -49,9 +60,12 @@ export default function PinForm({ initial, onClose }) {
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <form className="sheet" onSubmit={save} onClick={(e) => e.stopPropagation()}>
-        <h2>{editing ? 'Edit pin' : 'New pin'}</h2>
+        <h2>
+          {editing ? 'Edit' : 'New'} {SHAPE_TITLES[initial.shapeType] || 'pin'}
+        </h2>
         <div className="coords">
-          {initial.lat.toFixed(5)}, {initial.lng.toFixed(5)}
+          {initial.shapeType !== 'point' && <>{describeShape(shape)} · centre </>}
+          {center.lat.toFixed(5)}, {center.lng.toFixed(5)}
         </div>
 
         <label>
@@ -79,7 +93,9 @@ export default function PinForm({ initial, onClose }) {
           )}
           <span className="spacer" />
           <button type="button" onClick={onClose} disabled={busy}>Cancel</button>
-          <button type="submit" className="primary" disabled={busy}>{editing ? 'Save' : 'Add pin'}</button>
+          <button type="submit" className="primary" disabled={busy}>
+            {editing ? 'Save' : initial.shapeType === 'point' ? 'Add pin' : 'Add area'}
+          </button>
         </div>
       </form>
     </div>

@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet.markercluster';
+import 'leaflet-draw';
 import { HIDE_AFTER_MS, MIRPURKHAS_BOUNDS, PIN_TYPES, STALE_AFTER_MS } from './config.js';
+import { areaLayer, describeShape, geometryFromLayer, hasGeometry, shapeStyle, shapeTypeOf } from './shapes.js';
 
 const esc = (v) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -48,6 +50,7 @@ function pinHtml(id, p, isAdmin) {
   const t = PIN_TYPES[p.type] || PIN_TYPES.other;
   return `<div class="pop">
     <div class="pop-title"><span class="badge" style="background:${t.color}">${esc(t.label)}</span> ${esc(p.label)}</div>
+    ${shapeTypeOf(p) !== 'point' ? `<div class="pop-meta">${esc(describeShape(p))}</div>` : ''}
     ${p.note ? `<div class="pop-note">${esc(p.note)}</div>` : ''}
     <div class="pop-meta">Created: ${fmtTime(p.createdAt)}${p.updatedAt ? `<br>Edited: ${fmtTime(p.updatedAt)}` : ''}</div>
     ${isAdmin ? `<button class="pop-btn" data-edit-pin="${esc(id)}">Edit / Delete</button>` : ''}
@@ -67,15 +70,19 @@ function clusterIcon(cluster) {
 }
 
 /**
- * Imperative Leaflet map. Officer dots and pins share one cluster group so any overlapping
+ * Imperative Leaflet map. Officer dots and point pins share one cluster group so any overlapping
  * items collapse into a count badge; tapping a badge zooms in, or — if the items are within
  * a few meters or the map is fully zoomed — lists everything at that spot in one popup.
+ * Area pins (polygon / rectangle / circle) live in their own translucent layer, unclustered.
+ * The admin view adds the Leaflet.draw toolbar for drawing and vertex-editing areas.
  */
-export default function LeafletMap({ officers, pins, now, myId, isAdmin, onMapClick, onEditPin, focus }) {
+export default function LeafletMap({
+  officers, pins, now, myId, isAdmin, onMapClick, onEditPin, onShapeDrawn, onShapesEdited, hasDraft, focus,
+}) {
   const elRef = useRef(null);
   const st = useRef(null);
   const cb = useRef({});
-  cb.current = { onMapClick, onEditPin, isAdmin };
+  cb.current = { onMapClick, onEditPin, onShapeDrawn, onShapesEdited, isAdmin };
 
   useEffect(() => {
     const map = L.map(elRef.current, {
@@ -118,13 +125,59 @@ export default function LeafletMap({ officers, pins, now, myId, isAdmin, onMapCl
     });
     map.addLayer(cluster);
 
+    const areas = L.featureGroup().addTo(map);
+    const draft = L.featureGroup().addTo(map); // a just-drawn shape, shown while its form is open
+    const s = { map, cluster, areas, draft, officerMarkers: new Map(), pinMarkers: new Map(), areaLayers: new Map() };
+    s.busy = false; // drawing or editing: map taps must not open the point-pin form
+    s.editing = false; // vertex editing: live data must not replace the layers being edited
+
     // A tap that only closes an open popup shouldn't also open the new-pin form.
     let lastPopupClose = 0;
     map.on('popupclose', () => (lastPopupClose = Date.now()));
     map.on('click', (e) => {
-      if (Date.now() - lastPopupClose < 400) return;
+      if (s.busy || Date.now() - lastPopupClose < 400) return;
       cb.current.onMapClick?.(e.latlng);
     });
+
+    if (cb.current.isAdmin) {
+      // showArea stays off: leaflet-draw 1.0.4's area readout throws on Leaflet 1.9.
+      map.addControl(
+        new L.Control.Draw({
+          position: 'topleft',
+          draw: {
+            polygon: { allowIntersection: false, showArea: false, shapeOptions: shapeStyle('cordon') },
+            rectangle: { showArea: false, shapeOptions: shapeStyle('cordon') },
+            circle: { showRadius: true, metric: true, shapeOptions: shapeStyle('search_zone') },
+            polyline: false,
+            marker: false,
+            circlemarker: false,
+          },
+          edit: { featureGroup: areas, remove: false },
+        }),
+      );
+      map.on(L.Draw.Event.DRAWSTART, () => (s.busy = true));
+      // The tap that finishes a shape can also reach the map's click handler; release a moment later.
+      map.on(L.Draw.Event.DRAWSTOP, () => setTimeout(() => (s.busy = s.editing), 400));
+      map.on(L.Draw.Event.CREATED, (e) => {
+        draft.clearLayers();
+        draft.addLayer(e.layer);
+        cb.current.onShapeDrawn?.(e.layerType, geometryFromLayer(e.layerType, e.layer));
+      });
+      map.on(L.Draw.Event.EDITSTART, () => {
+        s.busy = s.editing = true;
+        map.closePopup();
+      });
+      map.on(L.Draw.Event.EDITED, (e) => {
+        const edits = [];
+        e.layers.eachLayer((l) => edits.push({ id: l._pinId, geometry: geometryFromLayer(l._shapeType, l) }));
+        if (edits.length) cb.current.onShapesEdited?.(edits);
+      });
+      map.on(L.Draw.Event.EDITSTOP, () => {
+        s.editing = false;
+        setTimeout(() => (s.busy = false), 400);
+        s.syncAreas?.(); // apply any changes that arrived while editing (or restore cancelled edits)
+      });
+    }
 
     // Edit buttons live in popup HTML (re-rendered on every refresh), so delegate from the pane.
     L.DomEvent.on(map.getPane('popupPane'), 'click', (ev) => {
@@ -138,7 +191,7 @@ export default function LeafletMap({ officers, pins, now, myId, isAdmin, onMapCl
       });
     });
 
-    st.current = { map, cluster, officerMarkers: new Map(), pinMarkers: new Map() };
+    st.current = s;
     return () => {
       map.remove();
       st.current = null;
@@ -185,7 +238,7 @@ export default function LeafletMap({ officers, pins, now, myId, isAdmin, onMapCl
 
     const seenP = new Set();
     for (const [id, p] of Object.entries(pins)) {
-      if (typeof p?.lat !== 'number') continue;
+      if (shapeTypeOf(p) !== 'point' || !hasGeometry(p)) continue;
       seenP.add(id);
       const html = pinHtml(id, p, isAdmin);
       let m = pinMarkers.get(id);
@@ -213,11 +266,50 @@ export default function LeafletMap({ officers, pins, now, myId, isAdmin, onMapCl
 
     if (toAdd.length) cluster.addLayers(toAdd);
     cluster.refreshClusters();
+
+    s.syncAreas = () => {
+      const { areas, areaLayers } = s;
+      const seen = new Set();
+      for (const [id, p] of Object.entries(pins)) {
+        if (shapeTypeOf(p) === 'point' || !hasGeometry(p)) continue;
+        seen.add(id);
+        const html = pinHtml(id, p, isAdmin);
+        const sig = JSON.stringify([shapeTypeOf(p), p.type, p.lat, p.lng, p.radiusMeters, p.coordinates]);
+        let l = areaLayers.get(id);
+        if (l && l._sig !== sig) {
+          areas.removeLayer(l);
+          l = null;
+        }
+        if (!l) {
+          l = areaLayer(p).bindPopup(html);
+          Object.assign(l, { _sig: sig, _pinId: id, _shapeType: shapeTypeOf(p) });
+          areas.addLayer(l);
+          areaLayers.set(id, l);
+        } else if (l.getPopup().getContent() !== html) {
+          l.setPopupContent(html);
+        }
+      }
+      for (const [id, l] of areaLayers) {
+        if (!seen.has(id)) {
+          areas.removeLayer(l);
+          areaLayers.delete(id);
+        }
+      }
+    };
+    if (!s.editing) s.syncAreas();
   }, [officers, pins, now, myId, isAdmin]);
 
-  // Pan to a requested point (e.g. "centre on me").
+  // Drop the just-drawn shape once its form closes (saved shapes come back via live data).
   useEffect(() => {
-    if (focus && st.current) st.current.map.setView([focus.lat, focus.lng], Math.max(st.current.map.getZoom(), 16));
+    if (!hasDraft) st.current?.draft.clearLayers();
+  }, [hasDraft]);
+
+  // Pan to a requested point ("centre on me") or area (search result).
+  useEffect(() => {
+    const map = st.current?.map;
+    if (!focus || !map) return;
+    if (focus.bounds) map.fitBounds(focus.bounds, { maxZoom: 17, padding: [20, 20] });
+    else map.setView([focus.lat, focus.lng], Math.max(map.getZoom(), 16));
   }, [focus]);
 
   return <div ref={elRef} className="map" />;

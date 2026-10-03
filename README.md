@@ -6,7 +6,7 @@ Public, no-login map. Officers share live GPS from `/map`; a single admin places
 | URL | Who | Can do |
 | --- | --- | --- |
 | `/map` (and `/` → redirects) | Officers | Start/Stop sharing location, view all officer dots and pins |
-| `/admin-<slug>` | Dispatch only | Everything above, plus tap map → create pin; pin popup → Edit / Delete |
+| `/admin-<slug>` | Dispatch only | Everything above, plus: place search; tap map → point pin; draw polygon / rectangle / circle areas; popup → Edit / Delete; "Edit layers" tool → drag area vertices |
 
 ## 1. Firebase setup (once)
 
@@ -34,6 +34,33 @@ Geolocation needs HTTPS (or `localhost`). To test on a phone, use the Vercel pre
 1. Push this folder to a Git repo and import it in Vercel (framework preset: **Vite**).
 2. **Settings → Environment Variables**: add every `VITE_*` variable from `.env.local`.
 3. Deploy. `vercel.json` rewrites all paths to the SPA so `/map` and `/admin-…` work on refresh.
+
+## Pins and areas
+
+Admin tools (admin view only; officers see everything read-only):
+
+- **Search box** (top): place search via OpenStreetMap Nominatim, limited to the district. Debounced 500 ms,
+  one request at a time. Picking a result only moves the map.
+- **Point pin**: tap the map.
+- **Polygon / Rectangle / Circle**: drawing toolbar on the left (Leaflet.draw). When the shape is finished
+  the same form opens: type, label, optional note.
+- **Edit / Delete**: tap any pin or area → popup → *Edit / Delete*.
+- **Reshape areas**: toolbar *Edit layers* → drag vertices / circle handles → *Save*.
+
+Types: incident, checkpoint, patrol point, cordon, search zone, other.
+
+Data model (`/pins/{id}`):
+
+```
+shapeType: "point" | "polygon" | "rectangle" | "circle"   (missing = "point", for older pins)
+type, label, note, createdAt, updatedAt?
+lat, lng                  point, or circle centre
+radiusMeters              circle only
+coordinates: [{lat, lng}] polygon / rectangle
+```
+
+**After changing `database.rules.json`, re-publish it in the Firebase console**, or writes using the new
+fields/types are rejected.
 
 ## Behaviour notes
 

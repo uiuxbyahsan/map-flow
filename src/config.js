@@ -11,8 +11,13 @@ export const PIN_TYPES = {
   incident: { label: 'Incident', color: '#d62828', glyph: '!' },
   checkpoint: { label: 'Checkpoint', color: '#e09f00', glyph: 'C' },
   patrol: { label: 'Patrol point', color: '#2a9d4b', glyph: 'P' },
+  cordon: { label: 'Cordon', color: '#c2185b', glyph: 'X' },
+  search_zone: { label: 'Search zone', color: '#0277bd', glyph: 'S' },
   other: { label: 'Other', color: '#7b2cbf', glyph: '•' },
 };
+
+// Drawn areas stay translucent so the map underneath and marker clusters remain readable.
+export const SHAPE_FILL_OPACITY = 0.22;
 
 // Only a SHA-256 hash of the admin slug ships in the bundle, so the admin URL can't be read from the JS.
 const ADMIN_SLUG_HASH = (import.meta.env.VITE_ADMIN_SLUG_HASH || '').trim().toLowerCase();
