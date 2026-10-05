@@ -153,3 +153,9 @@ body { background: var(--bg); -webkit-tap-highlight-color: transparent; }
 
 /* Leaflet.draw: readable action buttons (Finish / Cancel / Save) */
 .leaflet-draw-actions a { font-size: 13px; }
+
+/* Admin basemap switch */
+.basemap-switch { display: flex; overflow: hidden; }
+.basemap-switch button { border: 0; background: #fff; padding: 6px 10px; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--navy); }
+.basemap-switch button + button { border-left: 1px solid var(--line); }
+.basemap-switch button.on { background: var(--navy); color: #fff; }

@@ -62,6 +62,35 @@ coordinates: [{lat, lng}] polygon / rectangle
 **After changing `database.rules.json`, re-publish it in the Firebase console**, or writes using the new
 fields/types are rejected.
 
+## Basemap (map tiles)
+
+The map uses **MapTiler** (Streets v2) for tiles. Set a key in `.env.local` and in Vercel:
+
+```
+VITE_MAPTILER_KEY=your_key_here
+```
+
+Get a free key at https://cloud.maptiler.com. **If the key is missing, the app falls back to the public
+OpenStreetMap tile server** (fine for dev, but rate-limited — not for production) and logs a console warning,
+so the map is never blank. Required attribution (© MapTiler © OpenStreetMap contributors) is kept automatically.
+
+### Optional: Google basemap (richer labels)
+
+Off by default. To enable:
+
+```
+VITE_BASEMAP=google
+VITE_GOOGLE_MAPS_KEY=your_google_key
+```
+
+Google tiles are shown under Leaflet via `leaflet.gridlayer.googlemutant` (the ToS-compliant way — Leaflet
+stays the map engine). When a Google key is set, the **admin view** gets a small Streets / Google toggle
+(top-right); the officer view uses whatever the env default is. Google requires a **billing-enabled Google
+Cloud project** — restrict the API key to your production domain (HTTP referrer restriction) and set a
+monthly budget alert. Without a Google key the toggle is hidden and the app uses Streets.
+
+**Set all `VITE_*` keys in the Vercel project settings too**, or the deployed site won't have them.
+
 ## Behaviour notes
 
 - **Update cadence:** while sharing, the device writes its last GPS fix every 8 s (heartbeat even when

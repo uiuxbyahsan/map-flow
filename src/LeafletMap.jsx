@@ -4,6 +4,7 @@ import 'leaflet.markercluster';
 import 'leaflet-draw';
 import { HIDE_AFTER_MS, MIRPURKHAS_BOUNDS, PIN_TYPES, STALE_AFTER_MS } from './config.js';
 import { areaLayer, describeShape, geometryFromLayer, hasGeometry, shapeStyle, shapeTypeOf } from './shapes.js';
+import { DEFAULT_BASEMAP, GOOGLE_AVAILABLE, googleLayer, streetsLayer } from './basemap.js';
 
 const esc = (v) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -94,10 +95,37 @@ export default function LeafletMap({
     });
     map.fitBounds(MIRPURKHAS_BOUNDS);
     map.setMinZoom(Math.max(9, map.getZoom() - 1));
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(map);
+
+    // Basemap: streets (MapTiler, or OSM fallback) or optional Google. Only one is on the map at a time.
+    let baseLayer = null;
+    let baseName = null;
+    const setBasemap = async (name) => {
+      if (name === baseName) return;
+      baseName = name;
+      const next = name === 'google' ? await googleLayer() : streetsLayer();
+      if (baseName !== name) return; // a newer switch won while we awaited
+      if (baseLayer) map.removeLayer(baseLayer);
+      baseLayer = next;
+      baseLayer.addTo(map).bringToBack();
+    };
+    setBasemap(DEFAULT_BASEMAP);
+
+    if (cb.current.isAdmin && GOOGLE_AVAILABLE) {
+      const ctl = L.control({ position: 'topright' });
+      ctl.onAdd = () => {
+        const div = L.DomUtil.create('div', 'leaflet-bar basemap-switch');
+        div.innerHTML = `<button data-base="streets" class="${DEFAULT_BASEMAP !== 'google' ? 'on' : ''}">Streets</button><button data-base="google" class="${DEFAULT_BASEMAP === 'google' ? 'on' : ''}">Google</button>`;
+        L.DomEvent.disableClickPropagation(div);
+        div.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-base]');
+          if (!b) return;
+          setBasemap(b.dataset.base);
+          div.querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b));
+        });
+        return div;
+      };
+      ctl.addTo(map);
+    }
 
     const cluster = L.markerClusterGroup({
       maxClusterRadius: 40,

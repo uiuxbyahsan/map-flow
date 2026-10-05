@@ -12,6 +12,7 @@
     "firebase": "^12.19.0",
     "leaflet": "^1.9.4",
     "leaflet-draw": "^1.0.4",
+    "leaflet.gridlayer.googlemutant": "^0.16.0",
     "leaflet.markercluster": "^1.5.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
